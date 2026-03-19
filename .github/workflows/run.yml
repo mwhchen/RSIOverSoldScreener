@@ -6,7 +6,7 @@ on:
     # 20:30 UTC is 4:30 PM EDT (Summer) (Mar - Nov)
     - cron: '30 20 * * 1-5'
     # 21:30 UTC is 4:30 PM EST (Winter) (Nov - Mar)
-    - cron: '30 21 * * 1-5'
+    #- cron: '30 21 * * 1-5'
   workflow_dispatch: # Allows manual triggering
 
 jobs:

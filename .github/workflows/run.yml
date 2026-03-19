@@ -1,76 +1,62 @@
-name: RSI OverSold Scanner (run at 4:30pm NY Time Mon to Fri)
+name: RSI OverSold Scanner (4:30pm NY Time Mon-Fri)
+
 on:
   schedule:
-    # 15:00 UTC is 11:00 AM EDT (March to November)
-    - cron: '0 15 * * 1-5'
-    # 16:00 UTC is 11:00 AM EST (December to Feb) for Winter
-    # - cron: '0 16 * * 1-5'
-  workflow_dispatch: # Allows you to run it manually via the Actions tab
+    # GitHub Actions uses UTC. 
+    # 20:30 UTC is 4:30 PM EDT (Summer) (Mar - Nov)
+    - cron: '30 20 * * 1-5'
+    # 21:30 UTC is 4:30 PM EST (Winter) (Nov - Mar)
+    - cron: '30 21 * * 1-5'
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print time
-        run: date
-        
   build:
-    needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to save JSON data back to the repo
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.12.9
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12.9'
-
-      - name: Cache Ticker Data
-        uses: actions/cache@v3
-        with:
-          path: ticker_cache.json
-          # This key uses the date so it refreshes periodically
-          key: ${{ runner.os }}-ticker-cache-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-ticker-cache-
+          python-version: '3.12'
+          cache: 'pip' # Speeds up subsequent runs
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas numpy requests xlsxwriter py_vollib lxml openpyxl tqdm schedule
+          pip install yfinance pandas requests tqdm openpyxl python-dotenv
 
-      - name: Show Trigger
+      - name: Show Trigger Time
         run: |
           echo "=============================="
-          echo "Workflow Trigger Time"
           echo "UTC: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "NY : $(TZ='America/New_York' date '+%Y-%m-%d %H:%M:%S %Z')"
           echo "=============================="
 
-      - name: Run RSI OverSold Screener
+      - name: Run RSI Analysis
         env:
-          # Link your GitHub Secrets to the script environment
+          # Match the variable name used in sp500_rsi_analyzer.py
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
-          WHATSAPP_KEY: ${{ secrets.WHATSAPP_KEY }}
-        run: python RSI OverSold Screener.py
+        run: python RSIOverSoldScreener.py
 
-      - name: Verify Cache File
-        run: ls -lh  # This lists all files and their sizes
-        
-      # Upload only Excel reports (clean)
-      - name: Upload Report
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          # Add the folders where our script saves data
+          git add SP500/*.json RSI_Analysis/*.json RSI_Analysis/*.xlsx Scans/*.xlsx
+          git commit -m "Auto-update RSI data and analysis: $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
+          git push
+
+      - name: Upload Excel Reports as Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Report-${{ github.run_id }}
-          path: "*.xlsx"
+          name: RSI-Reports-${{ github.run_id }}
+          path: |
+            Scans/*.xlsx
+            RSI_Analysis/*.xlsx
           if-no-files-found: warn
-
-      # Upload debug ONLY if something fails
-      - name: Upload Debug Cache
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Debug-${{ github.run_id }}
-          path: ticker_cache.json

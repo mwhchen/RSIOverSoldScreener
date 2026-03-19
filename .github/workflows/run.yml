@@ -28,7 +28,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance pandas requests tqdm openpyxl python-dotenv
+          pip install yfinance pandas requests tqdm openpyxl python-dotenv lxml
 
       - name: Show Trigger Time
         run: |

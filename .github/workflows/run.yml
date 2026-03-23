@@ -10,7 +10,44 @@ on:
   workflow_dispatch: # Allows manual triggering
 
 jobs:
+  check-market-holiday:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gatekeeper.outputs.should_run }}
+    steps:
+      - name: Check Market Holiday
+        id: gatekeeper
+        run: |
+          # Get current date in YYYY-MM-DD format
+          TODAY=$(TZ="America/New_York" date +%Y-%m-%d)
+          
+          # List of 2026 US Market Holidays
+          HOLIDAYS=(
+            "2026-01-01" # New Year's Day
+            "2026-01-19" # Martin Luther King, Jr. Day
+            "2026-02-16" # Washington's Birthday
+            "2026-04-03" # Good Friday
+            "2026-05-25" # Memorial Day
+            "2026-06-19" # Juneteenth
+            "2026-07-03" # Independence Day (Observed)
+            "2026-09-07" # Labor Day
+            "2026-11-26" # Thanksgiving Day
+            "2026-12-25" # Christmas Day
+          )
+
+          # Default to run
+          RESULT="true"
+          for day in "${HOLIDAYS[@]}"; do
+            if [ "$TODAY" == "$day" ]; then
+              RESULT="false"
+              echo "Holiday detected: $TODAY. Skipping work."
+            fi
+          done
+          echo "should_run=$RESULT" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: check-market-holiday
+    if: needs.check-market-holiday.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to save JSON data back to the repo

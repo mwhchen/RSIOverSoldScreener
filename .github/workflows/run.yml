@@ -84,10 +84,21 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
           # Add the folders where our script saves data
-          git add SP500/*.json RSI_Analysis/*.json RSI_Analysis/*.xlsx Scans/*.xlsx
-          git commit -m "Auto-update RSI data and analysis: $(date +'%Y-%m-%d %H:%M')" || echo "No changes to commit"
-          git push
+          # Use 'git add -A' to stage all changes safely, 
+          # or specifically target folders while ignoring "pathspec" errors if files don't exist
+          git add SP500/*.json 2>/dev/null || true
+          git add RSI_Analysis/*.json 2>/dev/null || true
+          git add RSI_Analysis/*.xlsx 2>/dev/null || true
+          git add Scans/*.xlsx 2>/dev/null || true
+          
+          # Only commit if there are actually staged changes
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Auto-update RSI data and analysis: $(date +'%Y-%m-%d %H:%M')"
+          else
+            echo "No changes detected. Skipping commit."
+          fi
 
       - name: Upload Excel Reports as Artifacts
         uses: actions/upload-artifact@v4

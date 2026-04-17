@@ -96,6 +96,7 @@ jobs:
           # Only commit if there are actually staged changes
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "Auto-update RSI data and analysis: $(date +'%Y-%m-%d %H:%M')"
+            git push  # <--- This is the essential missing line to save in repository!
           else
             echo "No changes detected. Skipping commit."
           fi

@@ -85,25 +85,21 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
   
-          # Define folders to check
-          TARGET_DIRS="SP500 RSI_Analysis Scans"
+          # 1. Compress files larger than 100MB
+          # This replaces 'large.json' with 'large.json.gz'
+          find SP500/ RSI_Analysis/ Scans/ -type f -size +100M \( -name "*.json" -o -name "*.xlsx" \) -exec gzip --best --force {} \;
   
-          # Find files larger than 100MB and gzip them
-          # --best: prioritizes maximum compression
-          # --force: overwrites if a .gz already exists
-          find $TARGET_DIRS -type f -size +100M \( -name "*.json" -o -name "*.xlsx" \) -exec gzip --best --force {} \;
+          # 2. Stage the entire directories
+          # This is safer than using wildcards (*) which can fail on new folders
+          git add SP500/ RSI_Analysis/ Scans/
   
-          # Stage both regular files and the new .gz files
-          git add SP500/*.json SP500/*.gz 2>/dev/null || true
-          git add RSI_Analysis/*.json RSI_Analysis/*.xlsx RSI_Analysis/*.gz 2>/dev/null || true
-          git add Scans/*.xlsx Scans/*.gz 2>/dev/null || true
-  
-          # Only commit and push if there are changes
+          # 3. Check if there is anything to commit
           if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected. Committing..."
             git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M') (large files compressed)"
             git push
           else
-            echo "No changes detected. Skipping commit."
+            echo "No changes to commit. Skipping."
           fi
           
       - name: Upload Excel Reports as Artifacts
